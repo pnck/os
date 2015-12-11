@@ -1,7 +1,7 @@
-#include "semaphore.h"
+#include "sem.h"
 
 extern int current;//global var --> current thread
-extern TCB g_tcb[NTCB];
+extern struct TCB g_tcb[NTCB];
 
 void block(struct TCB **pqueue)
 {
@@ -40,9 +40,10 @@ void wakeup_first(struct TCB ** pqueue)
 
 semaphore * create_semaphore(int rescount)
 {
+    semaphore *sem;
     if(rescount < 1) return NULL;
 
-    semaphore *sem = malloc(sizeof(semaphore));
+    sem = malloc(sizeof(semaphore));
     if(!sem) return NULL;
 
     disable();
