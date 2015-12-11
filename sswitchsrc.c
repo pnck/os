@@ -22,6 +22,7 @@ struct TCB{
 	unsigned  int ss;
 	unsigned  int sp;
 	int state;
+	int priority;
 	char name[10];
 }tcb[NTCB];
 
@@ -102,12 +103,16 @@ void p2( )
 
 int Find()
 {
-	int i,j;
-
-	i=current;
-
-	while(tcb[i=((i+1)%NTCB)].state!=READY||i==current);
-
+	int i = 0,j = 0;
+	//while(tcb[i=((i+1)%NTCB)].state!=READY||i==current);
+	for(;j<NTCB;j++)
+	{
+		if(tcb[j].state==READY)
+			if(tcb[j].priority > tcb[i].priority)//find max priority
+			{
+				i = j;
+			}
+	}
 
 	return i;
 }
@@ -158,7 +163,7 @@ void InitTcb()
 	unsigned int *tmp=0;
 
 	//for thread 1
-
+	tcb[1].priority = 1;
 	tcb[1].state=READY;
 //	strcpy(tcb[1].name, "p1");
 
@@ -180,7 +185,7 @@ void InitTcb()
 
 
 	//for thread 2
-
+	tcb[2].priority = 2;
 	tcb[2].state=READY;
 //	strcpy(tcb[2].name, "p2");
 
@@ -304,6 +309,7 @@ void main()
 
 	strcpy(tcb[0].name, "main");
 	tcb[0].state=RUNNING;
+	tcb[0].priority = 0;
 	current=0;
 
 	tcb_state();
