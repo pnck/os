@@ -1,44 +1,8 @@
-#include <dos.h>
-#include <stdlib.h>
-
+#include "main.h"
 
 int current;
 long timecount;
-#define NTCB 3
-
-#define FINISHED 0
-#define RUNNING 1
-#define READY   2
-#define BLOCKED 3
-
-#define TIMEINT 0x08
-
-#define TIMESLIP 5
-
-#define STACKLEN 1024
-
-struct TCB{
-	unsigned char *stack;
-	unsigned  int ss;
-	unsigned  int sp;
-	int state;
-	int priority;
-	char name[10];
-}tcb[NTCB];
-
-void interrupt (*old_int8)(void);
-void interrupt new_int8(void);
-void interrupt test_int8(void);
-void over(void);
-
-#define GET_INDOS 0x34
-#define GET_CRIT_ERR 0x5d06
-
-char far *indos_ptr=0;
-char far *crit_err_ptr=0;
-
-int DosBusy(void);
-void InitInDos(void);
+struct TCB g_tcb[NTCB];
 
 void InitInDos(void)
 {
@@ -101,14 +65,14 @@ void p2( )
 	}
 }
 
-int Find()
+int Find()//find a thread to dispatch
 {
 	int i = 0,j = 0;
-	//while(tcb[i=((i+1)%NTCB)].state!=READY||i==current);
+	//while(g_tcb[i=((i+1)%NTCB)].state!=READY||i==current);
 	for(;j<NTCB;j++)
 	{
-		if(tcb[j].state==READY)
-			if(tcb[j].priority > tcb[i].priority)//find max priority
+		if(g_tcb[j].state==READY)
+			if(g_tcb[j].priority > g_tcb[i].priority)//find max priority
 			{
 				i = j;
 			}
@@ -121,7 +85,7 @@ void interrupt swtch()            /* 其他原因CPU调度  */
 {
 	int i;
 
-	if(tcb[current].state!=FINISHED
+	if(g_tcb[current].state!=FINISHED
 		&&current!=0) /* 当前线程还没结束 */
 		return;
 
@@ -130,28 +94,28 @@ void interrupt swtch()            /* 其他原因CPU调度  */
 		return;
 
 	disable();
-	tcb[current].ss=_SS;
-	tcb[current].sp=_SP;
+	g_tcb[current].ss=_SS;
+	g_tcb[current].sp=_SP;
 
-	if(tcb[current].state==RUNNING)
-		tcb[current].state=READY;      /* 放入就绪队列中 */
+	if(g_tcb[current].state==RUNNING)
+		g_tcb[current].state=READY;      /* 放入就绪队列中 */
 
-	_SS=tcb[i].ss;
-	_SP=tcb[i].sp;        /* 保存现场 */
+	_SS=g_tcb[i].ss;
+	_SP=g_tcb[i].sp;        /* 保存现场 */
 
-	tcb[i].state=RUNNING;
+	g_tcb[i].state=RUNNING;
 	current=i;
 	enable();
 }
 
 void over()
 {
-	if(tcb[current].state==RUNNING)
+	if(g_tcb[current].state==RUNNING)
 	{
 		disable();
-		tcb[current].state=FINISHED;
-		strcpy(tcb[current].name,NULL);
-		free(tcb[current].stack);
+		g_tcb[current].state=FINISHED;
+		strcpy(g_tcb[current].name,NULL);
+		free(g_tcb[current].stack);
 		enable();
 	}
 
@@ -163,14 +127,14 @@ void InitTcb()
 	unsigned int *tmp=0;
 
 	//for thread 1
-	tcb[1].priority = 1;
-	tcb[1].state=READY;
-//	strcpy(tcb[1].name, "p1");
+	g_tcb[1].priority = 1;
+	g_tcb[1].state=READY;
+//	strcpy(g_tcb[1].name, "p1");
 
-	tcb[1].stack=(unsigned char *)malloc(STACKLEN);
-	memset(tcb[1].stack, 0xff, STACKLEN);
+	g_tcb[1].stack=(unsigned char *)malloc(STACKLEN);
+	memset(g_tcb[1].stack, 0xff, STACKLEN);
 
-	tmp=(unsigned int *)(tcb[1].stack+STACKLEN-2);
+	tmp=(unsigned int *)(g_tcb[1].stack+STACKLEN-2);
 	
 	*tmp=FP_SEG(over);
 	*(tmp-1)=FP_OFF(over);
@@ -180,19 +144,19 @@ void InitTcb()
 	
 	*(tmp-9)=_ES;
 	*(tmp-10)=_DS;
-	tcb[1].ss=FP_SEG(tmp-13);
-	tcb[1].sp=FP_OFF(tmp-13);
+	g_tcb[1].ss=FP_SEG(tmp-13);
+	g_tcb[1].sp=FP_OFF(tmp-13);
 
 
 	//for thread 2
-	tcb[2].priority = 2;
-	tcb[2].state=READY;
-//	strcpy(tcb[2].name, "p2");
+	g_tcb[2].priority = 2;
+	g_tcb[2].state=READY;
+//	strcpy(g_tcb[2].name, "p2");
 
-	tcb[2].stack=(unsigned char *)malloc(STACKLEN);
-	memset(tcb[2].stack, 0xff, STACKLEN);
+	g_tcb[2].stack=(unsigned char *)malloc(STACKLEN);
+	memset(g_tcb[2].stack, 0xff, STACKLEN);
 	
-	tmp=(unsigned int *)(tcb[2].stack+STACKLEN-2);
+	tmp=(unsigned int *)(g_tcb[2].stack+STACKLEN-2);
 
 	*tmp=FP_SEG(over);
 	*(tmp-1)=FP_OFF(over);
@@ -202,8 +166,8 @@ void InitTcb()
 	
 	*(tmp-9)=_ES;
 	*(tmp-10)=_DS;
-	tcb[2].ss=FP_SEG(tmp-13);
-	tcb[2].sp=FP_OFF(tmp-13);
+	g_tcb[2].ss=FP_SEG(tmp-13);
+	g_tcb[2].sp=FP_OFF(tmp-13);
 }
 
 void interrupt new_int8(void)
@@ -224,11 +188,11 @@ void interrupt new_int8(void)
 			disable();
 //			asm CLI
 
-			tcb[current].ss=_SS;
-			tcb[current].sp=_SP;
+			g_tcb[current].ss=_SS;
+			g_tcb[current].sp=_SP;
 
-			if(tcb[current].state==RUNNING)
-				tcb[current].state=READY;
+			if(g_tcb[current].state==RUNNING)
+				g_tcb[current].state=READY;
 
 			i=Find();
 
@@ -236,9 +200,9 @@ void interrupt new_int8(void)
 				return;
 
 			
-			_SS=tcb[i].ss;
-			_SP=tcb[i].sp;
-			tcb[i].state=RUNNING;
+			_SS=g_tcb[i].ss;
+			_SP=g_tcb[i].sp;
+			g_tcb[i].state=RUNNING;
 
 			timecount=0;
 			current=i;
@@ -257,7 +221,7 @@ void tcb_state()
 
 	for(i=0; i<NTCB; i++)
 	{
-		switch(tcb[i].state)
+		switch(g_tcb[i].state)
 		{
 		case FINISHED:
 				printf("\nthe thread %d is finished!\n", i);
@@ -281,7 +245,7 @@ int all_finished()
 {
 	int i;
 
-	if(tcb[1].state!=FINISHED||tcb[2].state!=FINISHED)
+	if(g_tcb[1].state!=FINISHED||g_tcb[2].state!=FINISHED)
 		return -1;
 	else 
 		return 0;
@@ -293,8 +257,8 @@ void releaseTcb()
 
 	for(i=1; i<NTCB; i++)
 	{
-		if(tcb[i].stack)
-			free(tcb[i].stack);
+		if(g_tcb[i].stack)
+			free(g_tcb[i].stack);
 	}
 }
 
@@ -307,9 +271,9 @@ void main()
 
 	old_int8=getvect(TIMEINT);
 
-	strcpy(tcb[0].name, "main");
-	tcb[0].state=RUNNING;
-	tcb[0].priority = 0;
+	strcpy(g_tcb[0].name, "main");
+	g_tcb[0].state=RUNNING;
+	g_tcb[0].priority = 0;
 	current=0;
 
 	tcb_state();
@@ -324,8 +288,8 @@ void main()
 	}
 
 
-	tcb[0].name[0]='\0';
-	tcb[0].state=FINISHED;
+	g_tcb[0].name[0]='\0';
+	g_tcb[0].state=FINISHED;
 	setvect(TIMEINT, old_int8);
 
 	tcb_state();
