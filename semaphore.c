@@ -1,17 +1,17 @@
 #include "sem.h"
 
-extern int current;//global var --> current thread
+extern int g_current;//global var --> g_current thread
 extern struct TCB g_tcb[NTCB];
 
 void block(struct TCB **pqueue)
 {
   struct TCB *tcbqueue = *pqueue;
-  g_tcb[current].state = BLOCKED;//block current thread
+  g_tcb[g_current].state = BLOCKED;//block g_current thread
 
   puts("block");
   if (tcbqueue == NULL) // no thread is wating ,queue is empty
   {
-    tcbqueue = &g_tcb[current];//point to current thread
+    tcbqueue = &g_tcb[g_current];//point to g_current thread
     tcbqueue->fd = NULL;
     tcbqueue->bk = NULL;
   }
@@ -19,9 +19,9 @@ void block(struct TCB **pqueue)
   {
     struct TCB *p;
     for (p = tcbqueue; p->bk != NULL; p = p->bk); //find last
-    p->bk = &g_tcb[current];//link current to queue
-    g_tcb[current].fd = p;//link current to queue
-    g_tcb[current].bk = NULL;
+    p->bk = &g_tcb[g_current];//link g_current to queue
+    g_tcb[g_current].fd = p;//link g_current to queue
+    g_tcb[g_current].bk = NULL;
   }
   enable();
   swtch();
@@ -30,11 +30,11 @@ void wakeup_first(struct TCB ** pqueue)
 {
   struct TCB *tcbqueue = *pqueue;
   puts("wakeup");
-  if (tcbqueue == NULL) return; //no thread is wating,continue current
+  if (tcbqueue == NULL) return; //no thread is wating,continue g_current
 
   tcbqueue->state = READY;//set first wating thread ready
   tcbqueue = tcbqueue->bk;
-  tcbqueue->fd->bk = NULL;//unlink current thread
+  tcbqueue->fd->bk = NULL;//unlink g_current thread
   tcbqueue->fd = NULL;
   return;
 }
@@ -61,7 +61,7 @@ semaphore * create_semaphore(int rescount)
   }
   else // add itself to aquired list
   {
-      sem->aquired_list->_tcb = &g_tcb[current];
+      sem->aquired_list->_tcb = &g_tcb[g_current];
       sem->aquired_list->bk = NULL;
       sem->aquired_list->fd = NULL;
   }
@@ -74,15 +74,15 @@ BOOL aquire_semaphore(semaphore * sem)//P op
 {
   struct aquiredtcblist *p;
   if (!sem) return FALSE;
-  //check if current thread has aquired a semaphore
+  //check if g_current thread has aquired a semaphore
   for (p = sem->aquired_list; p->bk != NULL; p = p->bk)
   {
-    if (p->_tcb == &g_tcb[current]) //has aquired,do nothing
+    if (p->_tcb == &g_tcb[g_current]) //has aquired,do nothing
     {
       return FALSE;
     }
   }
-  if (p->_tcb == &g_tcb[current]) //has aquired,do nothing
+  if (p->_tcb == &g_tcb[g_current]) //has aquired,do nothing
   {
     return FALSE;
   }
@@ -95,7 +95,7 @@ BOOL aquire_semaphore(semaphore * sem)//P op
   }
   p->bk->fd = p;
   p = p->bk;
-  p->_tcb = &g_tcb[current];//aquired list += current thread
+  p->_tcb = &g_tcb[g_current];//aquired list += g_current thread
   p->bk = NULL;
   sem -> value--;
   if (sem->value < 0)
@@ -114,10 +114,10 @@ BOOL release_semaphore(semaphore **psem)//V OP
   if (!psem) return FALSE; //not a ptr addr
   if (!sem) return FALSE; //the ptr points to NULL
 
-  //find current thread from aquired list
+  //find g_current thread from aquired list
   for (p = sem->aquired_list; p != NULL; p = p->bk)
   {
-    if (p->_tcb == &g_tcb[current]) //found
+    if (p->_tcb == &g_tcb[g_current]) //found
       break;
   }
   if (p == NULL) return FALSE; //not found, has not aquire a semaphore obj
@@ -128,7 +128,7 @@ BOOL release_semaphore(semaphore **psem)//V OP
   else sem->aquired_list = p->bk;//p->bk become the first
   if (p->bk) p->bk->fd = p->fd; //unlink p
 
-  free(p);//release current thread from aquired list
+  free(p);//release g_current thread from aquired list
 
   if (sem->value <= 0)
   {

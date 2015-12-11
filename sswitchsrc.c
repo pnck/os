@@ -10,7 +10,7 @@ char far *crit_err_ptr = 0;
 
 int DosBusy(void);
 void InitInDos(void);
-int current;
+int g_current;
 long timecount;
 struct TCB g_tcb[NTCB];
 semaphore *g_semaphore;
@@ -56,14 +56,14 @@ void p1( )
 
   for (t = 0; t < 10; t++)//semaphore
   {
-    //aquire_semaphore(g_semaphore);
+    aquire_semaphore(g_semaphore);
     for (i = 0; i < 50; i++)
     {
       putchar('A');
       for (j = 0; j < 1000; j++)
         for (k = 0; k < 100; k++);
     }
-    //release_semaphore(&g_semaphore);
+    release_semaphore(&g_semaphore);
     puts("p1 line..");
   }
 
@@ -75,14 +75,14 @@ void p2( )
 
   for (t = 0; t < 10; t++)//semaphore
   {
-    //aquire_semaphore(g_semaphore);
+    aquire_semaphore(g_semaphore);
     for (i = 0; i < 50; i++)
     {
       putchar('b');
       for (j = 0; j < 1000; j++)
         for (k = 0; k < 100; k++);
     }
-    //release_semaphore(&g_semaphore);
+    release_semaphore(&g_semaphore);
     puts("p2 line..");
   }
 
@@ -91,28 +91,31 @@ void p2( )
 int Find()//find a thread to dispatch
 {
   int i = 0, j = 0;
-  //while(g_tcb[i=((i+1)%NTCB)].state!=READY||i==current);
+  //while(g_tcb[i=((i+1)%NTCB)].state!=READY||i==g_current);
   for (; j < NTCB; j++)
   {
     if (g_tcb[j].state == READY)
+    {
       if (g_tcb[j].priority > g_tcb[i].priority)//find max priority
       {
         i = j;
       }
-      if(g_tcb[j].priority == g_tcb[current].priority && j!=current)//same pri,switch
+      if (g_tcb[j].priority == g_tcb[g_current].priority && j != g_current) //same pri,switch
       {
         i = j;
       }
+    }
+
   }
   return i;
 }
 
-void interrupt swtch()            /* 其他原因CPU调度  */
+void interrupt swtch()            /* 其他原因主动CPU调度  */
 {
   int i;
 
-  if (g_tcb[current].state != FINISHED
-      && current != 0) /* 当前线程还没结束 */
+  if (g_tcb[g_current].state != FINISHED
+      && g_current != 0) // 当前线程还没结束 
     return;
 
   i = Find();
@@ -121,31 +124,31 @@ void interrupt swtch()            /* 其他原因CPU调度  */
 
   disable();
   //printf("\ntcb[%d]get cpu period\n",i);
-  g_tcb[current].ss = _SS; //save stack state
-  g_tcb[current].sp = _SP;
+  g_tcb[g_current].ss = _SS; //save stack state
+  g_tcb[g_current].sp = _SP;
 
-  if (g_tcb[current].state == RUNNING)
-    g_tcb[current].state = READY;    /* 放入就绪队列中 */
+  if (g_tcb[g_current].state == RUNNING)
+    g_tcb[g_current].state = READY;    /* 放入就绪队列中 */
 
   _SS = g_tcb[i].ss;
   _SP = g_tcb[i].sp;      //load saved stack
 
   g_tcb[i].state = RUNNING;
-  current = i;
+  g_current = i;
   enable();
 }
 
 void over()
 {
-  if (g_tcb[current].state == RUNNING)
+  if (g_tcb[g_current].state == RUNNING)
   {
     disable();
-    g_tcb[current].state = FINISHED;
-    strcpy(g_tcb[current].name, NULL);
-    free(g_tcb[current].stack);
+    g_tcb[g_current].state = FINISHED;
+    printf("thread %s finished\n", g_tcb[g_current].name);
+    memset(g_tcb[g_current].name,0,sizeof(g_tcb[g_current].name));
+    free(g_tcb[g_current].stack);
     enable();
   }
-
   swtch();
 }
 
@@ -156,7 +159,7 @@ void InitTcb()
   //for thread 1
   g_tcb[1].priority = 2;//run p1 first
   g_tcb[1].state = READY;
-//  strcpy(g_tcb[1].name, "p1");
+  strcpy(g_tcb[1].name, "p1");
 
   g_tcb[1].stack = (unsigned char *)malloc(STACKLEN);
   memset(g_tcb[1].stack, 0xff, STACKLEN);
@@ -178,7 +181,7 @@ void InitTcb()
   //for thread 2
   g_tcb[2].priority = 2;
   g_tcb[2].state = READY;
-//  strcpy(g_tcb[2].name, "p2");
+  strcpy(g_tcb[2].name, "p2");
 
   g_tcb[2].stack = (unsigned char *)malloc(STACKLEN);
   memset(g_tcb[2].stack, 0xff, STACKLEN);
@@ -197,7 +200,7 @@ void InitTcb()
   g_tcb[2].sp = FP_OFF(tmp - 13);
 }
 
-void interrupt new_int8(void)
+void interrupt new_int8(void)// interrupt switch period
 {
   int i;
 
@@ -215,15 +218,16 @@ void interrupt new_int8(void)
       disable();
 //      asm CLI
 
-      g_tcb[current].ss = _SS;
-      g_tcb[current].sp = _SP;
+      g_tcb[g_current].ss = _SS;
+      g_tcb[g_current].sp = _SP;
 
-      if (g_tcb[current].state == RUNNING)
-        g_tcb[current].state = READY;
+      if (g_tcb[g_current].state == RUNNING)
+        g_tcb[g_current].state = READY;
 
       i = Find();
+      //printf("\ntcb[%d]get cpu period\n",i);
       /*
-            if(i==current)
+            if(i==g_current)
               return;
       */
 
@@ -232,8 +236,7 @@ void interrupt new_int8(void)
       g_tcb[i].state = RUNNING;
 
       timecount = 0;
-      current = i;
-
+      g_current = i;
       enable();
 //      asm STI
 
@@ -303,7 +306,7 @@ void main()
   strcpy(g_tcb[0].name, "main");
   g_tcb[0].state = RUNNING;
   g_tcb[0].priority = 0;
-  current = 0;
+  g_current = 0;
 
   tcb_state();
 
@@ -313,10 +316,10 @@ void main()
 
   while (all_finished())
   {
-    //  printf("system running!\n");
+    // printf("system running!\n");
   }
 
-
+  puts("all child thread finished");
   g_tcb[0].name[0] = '\0';
   g_tcb[0].state = FINISHED;
   setvect(TIMEINT, old_int8);
