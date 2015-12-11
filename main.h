@@ -34,18 +34,9 @@ struct TCB
 	char name[10];
 };
 
-void interrupt (*old_int8)(void);
-void interrupt new_int8(void);
-void interrupt test_int8(void);
-void over(void);
 
 #define GET_INDOS 0x34
 #define GET_CRIT_ERR 0x5d06
 
-char far *indos_ptr=0;
-char far *crit_err_ptr=0;
-
-int DosBusy(void);
-void InitInDos(void);
 
 #endif

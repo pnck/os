@@ -16,4 +16,9 @@ typedef struct _tagsemaphore
     struct TCB *wake_queue;
     struct aquiredtcblist *aquired_list;//threads that aquired a semaphore obj 
 }semaphore;
+
+semaphore * create_semaphore(int rescount);
+BOOL aquire_semaphore(semaphore * sem);//P op
+BOOL release_semaphore(semaphore **sem);//V OP
+
 #endif
