@@ -1,3 +1,5 @@
+#include <dos.h>
+#include <stdlib.h>
 #include "main.h"
 #include "sem.h"
 
@@ -59,12 +61,12 @@ void p1( )
     aquire_semaphore(g_semaphore);
     for (i = 0; i < 50; i++)
     {
-      putchar('A');
+      putchar('1');
       for (j = 0; j < 1000; j++)
         for (k = 0; k < 100; k++);
     }
-    release_semaphore(&g_semaphore);
     puts("p1 line..");
+    release_semaphore(&g_semaphore);
   }
 
 }
@@ -78,12 +80,12 @@ void p2( )
     aquire_semaphore(g_semaphore);
     for (i = 0; i < 50; i++)
     {
-      putchar('b');
+      putchar('2');
       for (j = 0; j < 1000; j++)
         for (k = 0; k < 100; k++);
     }
-    release_semaphore(&g_semaphore);
     puts("p2 line..");
+    release_semaphore(&g_semaphore);
   }
 
 }
@@ -113,17 +115,17 @@ int Find()//find a thread to dispatch
 void interrupt swtch()            /* 其他原因主动CPU调度  */
 {
   int i;
-
+  /*
   if (g_tcb[g_current].state != FINISHED
       && g_current != 0) // 当前线程还没结束 
     return;
-
+  */
   i = Find();
+  printf("\ntcb[%d]get cpu period\n",i);
   if (i < 0)
     return;
 
   disable();
-  //printf("\ntcb[%d]get cpu period\n",i);
   g_tcb[g_current].ss = _SS; //save stack state
   g_tcb[g_current].sp = _SP;
 
@@ -238,6 +240,8 @@ void interrupt new_int8(void)// interrupt switch period
       timecount = 0;
       g_current = i;
       enable();
+
+
 //      asm STI
 
     }
@@ -294,6 +298,7 @@ void releaseTcb()
 
 void main()
 {
+  int i;
   g_semaphore = create_semaphore(1);//create a semaphore obj with 1 res
 
   timecount = 0;
@@ -325,7 +330,10 @@ void main()
   setvect(TIMEINT, old_int8);
 
   tcb_state();
-
+  for (i = 0; i < 300; i++)
+  {
+    //printf("r%d,p:%x\n", i, malloc(100));
+  }
   printf("\n Multi_task system terminated.\n");
 }
 

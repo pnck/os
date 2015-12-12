@@ -1,8 +1,6 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#include <dos.h>
-#include <stdlib.h>
 
 typedef int BOOL;
 
@@ -20,7 +18,7 @@ typedef int BOOL;
 
 #define TIMESLIP 5
 
-#define STACKLEN 1024
+#define STACKLEN 4096
 
 struct TCB
 {
