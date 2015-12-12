@@ -7,24 +7,17 @@ extern struct TCB g_tcb[NTCB];
 
 void block(struct TCB **pqueue)
 {
-  struct TCB *tcbqueue = *pqueue;
+  struct TCB *tcbqueue = *pqueue,*p;
   asm cli;
   g_tcb[g_current].state = BLOCKED;//block g_current thread
-  printf("block %s",g_tcb[g_current].name);
-  if (tcbqueue == NULL) // no thread is wating ,queue is empty
-  {
-    tcbqueue = &g_tcb[g_current];//point to g_current thread
-    tcbqueue->fd = NULL;
-    tcbqueue->bk = NULL;
-  }
-  else
-  {
-    struct TCB *p;
-    for (p = tcbqueue; p->bk != NULL; p = p->bk); //find last
-    p->bk = &g_tcb[g_current];//link g_current to queue
-    g_tcb[g_current].fd = p;//link g_current to queue
-    g_tcb[g_current].bk = NULL;
-  }
+  //putchar('b');
+  //putchar(g_tcb[g_current].name+'A'-'1');
+
+  for (p = tcbqueue; p->bk != NULL; p = p->bk); //find last
+  p->bk = &g_tcb[g_current];//link g_current to queue
+  g_tcb[g_current].fd = p;//link g_current to queue
+  g_tcb[g_current].bk = NULL;
+
   asm sti;
   swtch();
 }
@@ -35,7 +28,8 @@ void wakeup_first(struct TCB ** pqueue)
   asm cli;
   for (p = tcbqueue; p->state != BLOCKED && p!=NULL; p = p->bk);//find first BLOCKED
   if(p) p->state = READY;//set first blocking thread ready
-  printf("wakeup %s$\n",p->name);
+  //putchar('w');
+  //putchar(p->name[1]+'A'-'1');
   asm sti;
   return;
 }
@@ -78,7 +72,7 @@ BOOL aquire_semaphore(semaphore * sem)//P op
   if (!sem) goto FAILED;
 
   asm cli;//clear int flag
-  printf("%s aquire semaphore\n", g_tcb[g_current].name);
+  //printf("%s aquire semaphore\n", g_tcb[g_current].name);
 
 
   //check if g_current thread has aquired a semaphore

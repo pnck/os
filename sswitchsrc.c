@@ -56,9 +56,17 @@ void p1( )
 {
   long i, j, k, t;
 
+  for (i = 0; i < 10; i++)
+  {
+    putchar('+');
+    for (j = 0; j < 1000; j++)
+      for (k = 0; k < 2000; k++);
+  }
+
   for (t = 0; t < 10; t++)//semaphore
   {
     aquire_semaphore(g_semaphore);
+    puts("p1 sem");
     for (i = 0; i < 50; i++)
     {
       putchar('1');
@@ -74,10 +82,16 @@ void p1( )
 void p2( )
 {
   long i, j, k, t;
-
+  for (i = 0; i < 10; i++)
+  {
+    putchar('-');
+    for (j = 0; j < 1000; j++)
+      for (k = 0; k < 2000; k++);
+  }
   for (t = 0; t < 10; t++)//semaphore
   {
     aquire_semaphore(g_semaphore);
+    puts("p2 sem");
     for (i = 0; i < 50; i++)
     {
       putchar('2');
@@ -121,7 +135,7 @@ void interrupt swtch()            /* 其他原因主动CPU调度  */
     return;
   */
   i = Find();
-  printf("\ntcb[%d]get cpu period\n",i);
+  //putchar(i+'A'-1);
   if (i < 0)
     return;
 
@@ -227,11 +241,7 @@ void interrupt new_int8(void)// interrupt switch period
         g_tcb[g_current].state = READY;
 
       i = Find();
-      //printf("\ntcb[%d]get cpu period\n",i);
-      /*
-            if(i==g_current)
-              return;
-      */
+      //putchar(i+'A'-1);
 
       _SS = g_tcb[i].ss;
       _SP = g_tcb[i].sp;
