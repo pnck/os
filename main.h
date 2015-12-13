@@ -14,7 +14,7 @@ typedef int BOOL;
 #define READY   2
 #define BLOCKED 3
 
-#define TIMEINT 0x08
+#define INT_TIME 0x08
 
 #define TIMESLIP 5
 
@@ -35,6 +35,9 @@ struct TCB
 
 #define GET_INDOS 0x34
 #define GET_CRIT_ERR 0x5d06
+
+#define INT_SWITCH 0x80
+#define CALL_SWITCH() asm int INT_SWITCH
 /*
 #define ASM_PUSHA\
 asm push ax;\

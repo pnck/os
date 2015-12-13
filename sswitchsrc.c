@@ -4,6 +4,8 @@
 #include "sem.h"
 
 void interrupt (*old_int8)(void);
+void interrupt (*old_intx80)(void);
+
 void interrupt new_int8(void);
 void interrupt test_int8(void);
 
@@ -78,7 +80,7 @@ int Find()//find a thread to dispatch
   return i;
 }
 
-void interrupt swtch()            /* 强制进行调度 */
+void interrupt force_switch()            /* force dispatching */
 {
   int i;
   /*
@@ -117,8 +119,8 @@ void over()
     free(g_tcb[g_current].stack);
     enable();
   }
-  //swtch();
-  asm int 0x80;
+  //force_switch();
+CALL_SWITCH();
 }
 
 void InitTcb()
@@ -177,7 +179,6 @@ void InitTcb()
 
 void interrupt new_int8(void)// interrupt switch period
 {
-  int i;
   (*old_int8)();
   timecount++;
   //puts("\ntime period!");
@@ -188,29 +189,9 @@ void interrupt new_int8(void)// interrupt switch period
     if (DosBusy())
       return;
     else
-    {
-      disable();
-      if (g_tcb[g_current].state == RUNNING)
-        g_tcb[g_current].state = READY;
-      i = Find();
-      //putchar('I');
-      //putchar(i + '0');
-      if (i != g_current && i >= 0)
-      {
-        g_tcb[g_current].ss = _SS;
-        g_tcb[g_current].sp = _SP;
-        //putchar(i+'A'-1);
-        _SS = g_tcb[i].ss;
-        _SP = g_tcb[i].sp;
-        g_current = i;
-      }
-      g_tcb[g_current].state = RUNNING;
-      timecount = 0;
-      enable();
-    }
+CALL_SWITCH();
   }
 }
-
 
 void tcb_state()
 {
@@ -269,7 +250,8 @@ void main()
   InitInDos();
   InitTcb();
 
-  old_int8 = getvect(TIMEINT);
+  old_int8 = getvect(INT_TIME);
+  old_intx80 = getvect(INT_SWITCH);
 
   strcpy(g_tcb[0].name, "main");
   g_tcb[0].state = RUNNING;
@@ -279,8 +261,8 @@ void main()
   tcb_state();
 
   disable();
-  setvect(TIMEINT, new_int8);
-  setvect(0x80,swtch);
+  setvect(INT_TIME, new_int8);
+  setvect(INT_SWITCH, force_switch);
   enable();
 
   while (all_finished())
@@ -291,8 +273,10 @@ void main()
   puts("all child thread finished");
   g_tcb[0].name[0] = '\0';
   g_tcb[0].state = FINISHED;
-  setvect(TIMEINT, old_int8);
-
+  disable();
+  setvect(INT_TIME, old_int8);
+  setvect(INT_SWITCH,old_intx80);
+  enable();
   tcb_state();
   for (i = 0; i < 300; i++)
   {
@@ -310,14 +294,14 @@ void p1( )
 {
   long i, j, k, t;
 
-  for (i = 0; i < 10; i++)
+  for (i = 0; i < 10; i++)//without semaphore
   {
     putchar('+');
     for (j = 0; j < 1000; j++)
       for (k = 0; k < 1000; k++);
   }
 
-  for (t = 0; t < 10; t++)//semaphore
+  for (t = 0; t < 10; t++)//with semaphore
   {
     aquire_semaphore(g_semaphore);
     puts("\np1 sem");
@@ -336,13 +320,13 @@ void p1( )
 void p2( )
 {
   long i, j, k, t;
-  for (i = 0; i < 10; i++)
+  for (i = 0; i < 10; i++)//without semaphore
   {
     putchar('-');
-    for (j = 0; j < 1000; j++)
-      for (k = 0; k < 1300; k++);
+    for (j = 0; j < 1100; j++)
+      for (k = 0; k < 900; k++);
   }
-  for (t = 0; t < 10; t++)//semaphore
+  for (t = 0; t < 10; t++)//with semaphore
   {
     aquire_semaphore(g_semaphore);
     puts("\np2 sem");
