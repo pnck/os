@@ -90,8 +90,8 @@ void interrupt swtch()            /* 强制进行调度 */
   if (g_tcb[g_current].state == RUNNING)
     g_tcb[g_current].state = READY;
   i = Find();
-  putchar('S');
-  putchar(i + '0');
+  //putchar('S');
+  //putchar(i + '0');
   if (i != g_current && i >= 0)
   {
     g_tcb[g_current].ss = _SS;
@@ -193,8 +193,8 @@ void interrupt new_int8(void)// interrupt switch period
       if (g_tcb[g_current].state == RUNNING)
         g_tcb[g_current].state = READY;
       i = Find();
-      putchar('I');
-      putchar(i + '0');
+      //putchar('I');
+      //putchar(i + '0');
       if (i != g_current && i >= 0)
       {
         g_tcb[g_current].ss = _SS;

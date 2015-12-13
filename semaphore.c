@@ -10,8 +10,8 @@ void block(struct TCB **pqueue)
   struct TCB *tcbqueue = *pqueue,*p;
   asm cli;
   g_tcb[g_current].state = BLOCKED;//block g_current thread
-  putchar('B');
-  putchar(g_current+'0');
+  //putchar('B');
+  //putchar(g_current+'0');
 
   for (p = tcbqueue; p->bk != NULL; p = p->bk); //find last
   p->bk = &g_tcb[g_current];//link g_current to queue
@@ -30,8 +30,8 @@ void wakeup_first(struct TCB ** pqueue)
   asm cli;
   for (p = tcbqueue; p->state != BLOCKED && p!=NULL; p = p->bk);//find first BLOCKED
   if(p) p->state = READY;//set first blocking thread ready
-  putchar('W');
-  putchar(p->name[1]);
+  //putchar('W');
+  //putchar(p->name[1]);
   asm sti;
   return;
 }
@@ -64,7 +64,7 @@ semaphore * create_semaphore(int rescount)
   }
   */
 
-  printf("init sem value:%d\n", sem->value);
+  //printf("init sem value:%d\n", sem->value);
   return sem;
 }
 
