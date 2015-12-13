@@ -20,6 +20,6 @@ typedef struct _tagsemaphore
 
 semaphore * create_semaphore(int rescount);
 BOOL aquire_semaphore(semaphore * sem);//P op
-BOOL release_semaphore(semaphore **sem);//V OP
-
+BOOL release_semaphore(semaphore *sem);//V OP
+BOOL delete_semaphore(semaphore **sem);//V OP
 #endif

@@ -6,6 +6,10 @@
 void interrupt (*old_int8)(void);
 void interrupt new_int8(void);
 void interrupt test_int8(void);
+
+void p1();
+void p2();
+
 void over(void);
 char far *indos_ptr = 0;
 char far *crit_err_ptr = 0;
@@ -52,58 +56,6 @@ typedef void (far *funcptr)(void);
 int create(char *name, funcptr func, int stlen);
 
 
-void p1( )
-{
-  long i, j, k, t;
-
-  for (i = 0; i < 10; i++)
-  {
-    putchar('+');
-    for (j = 0; j < 1000; j++)
-      for (k = 0; k < 2000; k++);
-  }
-
-  for (t = 0; t < 10; t++)//semaphore
-  {
-    aquire_semaphore(g_semaphore);
-    puts("p1 sem");
-    for (i = 0; i < 50; i++)
-    {
-      putchar('1');
-      for (j = 0; j < 1000; j++)
-        for (k = 0; k < 100; k++);
-    }
-    puts("p1 line..");
-    release_semaphore(&g_semaphore);
-  }
-
-}
-
-void p2( )
-{
-  long i, j, k, t;
-  for (i = 0; i < 10; i++)
-  {
-    putchar('-');
-    for (j = 0; j < 1000; j++)
-      for (k = 0; k < 2000; k++);
-  }
-  for (t = 0; t < 10; t++)//semaphore
-  {
-    aquire_semaphore(g_semaphore);
-    puts("p2 sem");
-    for (i = 0; i < 50; i++)
-    {
-      putchar('2');
-      for (j = 0; j < 1000; j++)
-        for (k = 0; k < 100; k++);
-    }
-    puts("p2 line..");
-    release_semaphore(&g_semaphore);
-  }
-
-}
-
 int Find()//find a thread to dispatch
 {
   int i = 0, j = 0;
@@ -126,31 +78,31 @@ int Find()//find a thread to dispatch
   return i;
 }
 
-void interrupt swtch()            /* 其他原因主动CPU调度  */
+void interrupt swtch()            /* 强制进行调度 */
 {
   int i;
   /*
-  if (g_tcb[g_current].state != FINISHED
-      && g_current != 0) // 当前线程还没结束 
+  if (g_tcb[g_current].state != FINISHED &&  g_tcb[g_current].state != BLOCKED
+  && g_current != 0) // 当前线程还没结束
     return;
   */
-  i = Find();
-  //putchar(i+'A'-1);
-  if (i < 0)
-    return;
-
   disable();
-  g_tcb[g_current].ss = _SS; //save stack state
-  g_tcb[g_current].sp = _SP;
-
   if (g_tcb[g_current].state == RUNNING)
-    g_tcb[g_current].state = READY;    /* 放入就绪队列中 */
-
-  _SS = g_tcb[i].ss;
-  _SP = g_tcb[i].sp;      //load saved stack
-
-  g_tcb[i].state = RUNNING;
-  g_current = i;
+    g_tcb[g_current].state = READY;
+  i = Find();
+  putchar('S');
+  putchar(i + '0');
+  if (i != g_current && i >= 0)
+  {
+    g_tcb[g_current].ss = _SS;
+    g_tcb[g_current].sp = _SP;
+    //putchar(i+'A'-1);
+    _SS = g_tcb[i].ss;
+    _SP = g_tcb[i].sp;
+    g_current = i;
+  }
+  g_tcb[g_current].state = RUNNING;
+  timecount = 0;
   enable();
 }
 
@@ -161,11 +113,12 @@ void over()
     disable();
     g_tcb[g_current].state = FINISHED;
     printf("thread %s finished\n", g_tcb[g_current].name);
-    memset(g_tcb[g_current].name,0,sizeof(g_tcb[g_current].name));
+    memset(g_tcb[g_current].name, 0, sizeof(g_tcb[g_current].name));
     free(g_tcb[g_current].stack);
     enable();
   }
-  swtch();
+  //swtch();
+  asm int 0x80;
 }
 
 void InitTcb()
@@ -190,6 +143,8 @@ void InitTcb()
 
   *(tmp - 9) = _ES;
   *(tmp - 10) = _DS;
+  //g_tcb[1].ss = FP_SEG(tmp - 13);
+  //g_tcb[1].sp = FP_OFF(tmp - 13);
   g_tcb[1].ss = FP_SEG(tmp - 13);
   g_tcb[1].sp = FP_OFF(tmp - 13);
 
@@ -212,6 +167,10 @@ void InitTcb()
 
   *(tmp - 9) = _ES;
   *(tmp - 10) = _DS;
+  /*
+    g_tcb[2].ss = FP_SEG(tmp - 13);
+    g_tcb[2].sp = FP_OFF(tmp - 13);
+    */
   g_tcb[2].ss = FP_SEG(tmp - 13);
   g_tcb[2].sp = FP_OFF(tmp - 13);
 }
@@ -219,7 +178,6 @@ void InitTcb()
 void interrupt new_int8(void)// interrupt switch period
 {
   int i;
-
   (*old_int8)();
   timecount++;
   //puts("\ntime period!");
@@ -232,28 +190,23 @@ void interrupt new_int8(void)// interrupt switch period
     else
     {
       disable();
-//      asm CLI
-
-      g_tcb[g_current].ss = _SS;
-      g_tcb[g_current].sp = _SP;
-
       if (g_tcb[g_current].state == RUNNING)
         g_tcb[g_current].state = READY;
-
       i = Find();
-      //putchar(i+'A'-1);
-
-      _SS = g_tcb[i].ss;
-      _SP = g_tcb[i].sp;
-      g_tcb[i].state = RUNNING;
-
+      putchar('I');
+      putchar(i + '0');
+      if (i != g_current && i >= 0)
+      {
+        g_tcb[g_current].ss = _SS;
+        g_tcb[g_current].sp = _SP;
+        //putchar(i+'A'-1);
+        _SS = g_tcb[i].ss;
+        _SP = g_tcb[i].sp;
+        g_current = i;
+      }
+      g_tcb[g_current].state = RUNNING;
       timecount = 0;
-      g_current = i;
       enable();
-
-
-//      asm STI
-
     }
   }
 }
@@ -280,7 +233,7 @@ void tcb_state()
       printf("the thread %d is blocked!\n", i);
       break;
     default:
-      printf("unknown state of thread %!\n", i);
+      printf("unknown state of thread %d!\n", i);
     }
   }
 }
@@ -327,6 +280,7 @@ void main()
 
   disable();
   setvect(TIMEINT, new_int8);
+  setvect(0x80,swtch);
   enable();
 
   while (all_finished())
@@ -344,8 +298,62 @@ void main()
   {
     //printf("r%d,p:%x\n", i, malloc(100));
   }
+  delete_semaphore(&g_semaphore);
   printf("\n Multi_task system terminated.\n");
 }
 
 
 
+
+
+void p1( )
+{
+  long i, j, k, t;
+
+  for (i = 0; i < 10; i++)
+  {
+    putchar('+');
+    for (j = 0; j < 1000; j++)
+      for (k = 0; k < 1000; k++);
+  }
+
+  for (t = 0; t < 10; t++)//semaphore
+  {
+    aquire_semaphore(g_semaphore);
+    puts("\np1 sem");
+    for (i = 0; i < 50; i++)
+    {
+      putchar('*');
+      for (j = 0; j < 1000; j++)
+        for (k = 0; k < 100; k++);
+    }
+    puts("\np1 line.fin...");
+    release_semaphore(g_semaphore);
+  }
+
+}
+
+void p2( )
+{
+  long i, j, k, t;
+  for (i = 0; i < 10; i++)
+  {
+    putchar('-');
+    for (j = 0; j < 1000; j++)
+      for (k = 0; k < 1300; k++);
+  }
+  for (t = 0; t < 10; t++)//semaphore
+  {
+    aquire_semaphore(g_semaphore);
+    puts("\np2 sem");
+    for (i = 0; i < 50; i++)
+    {
+      putchar('/');
+      for (j = 0; j < 1000; j++)
+        for (k = 0; k < 100; k++);
+    }
+    puts("\np2 line.fin...");
+    release_semaphore(g_semaphore);
+  }
+
+}

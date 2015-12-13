@@ -10,8 +10,8 @@ void block(struct TCB **pqueue)
   struct TCB *tcbqueue = *pqueue,*p;
   asm cli;
   g_tcb[g_current].state = BLOCKED;//block g_current thread
-  //putchar('b');
-  //putchar(g_tcb[g_current].name+'A'-'1');
+  putchar('B');
+  putchar(g_current+'0');
 
   for (p = tcbqueue; p->bk != NULL; p = p->bk); //find last
   p->bk = &g_tcb[g_current];//link g_current to queue
@@ -19,7 +19,9 @@ void block(struct TCB **pqueue)
   g_tcb[g_current].bk = NULL;
 
   asm sti;
-  swtch();
+  //swtch();
+  asm int 0x80;
+
 }
 void wakeup_first(struct TCB ** pqueue)
 {
@@ -28,8 +30,8 @@ void wakeup_first(struct TCB ** pqueue)
   asm cli;
   for (p = tcbqueue; p->state != BLOCKED && p!=NULL; p = p->bk);//find first BLOCKED
   if(p) p->state = READY;//set first blocking thread ready
-  //putchar('w');
-  //putchar(p->name[1]+'A'-'1');
+  putchar('W');
+  putchar(p->name[1]);
   asm sti;
   return;
 }
@@ -43,7 +45,7 @@ semaphore * create_semaphore(int rescount)
   sem = malloc(sizeof(semaphore));
   if (!sem) return NULL;
 
-  asm cli;
+
   sem -> max_value = rescount;
   sem -> value = rescount;
   sem -> wake_queue = NULL;
@@ -61,7 +63,7 @@ semaphore * create_semaphore(int rescount)
       sem->aquired_list->fd = NULL;
   }
   */
-  asm sti;
+
   printf("init sem value:%d\n", sem->value);
   return sem;
 }
@@ -84,7 +86,7 @@ BOOL aquire_semaphore(semaphore * sem)//P op
     asm sti;
     return TRUE;
   }
-  asm sti;
+
   for(; p->bk != NULL; p = p->bk)//find myself
   {
     if (p == &g_tcb[g_current]) //has aquired,do nothing
@@ -96,7 +98,7 @@ BOOL aquire_semaphore(semaphore * sem)//P op
   {
     goto FAILED;
   }//not aquired, aquiring
-  asm cli;
+
   //no more malloc
   sem -> value--;
 
@@ -116,13 +118,11 @@ FAILED:
   asm sti;
   return FALSE;
 }
-BOOL release_semaphore(semaphore **psem)//V OP
+BOOL release_semaphore(semaphore *sem)//V OP
 {
-  semaphore *sem = *psem;
   struct TCB *p;
   //empty queue and value == max_value
 
-  if (!psem) return FALSE; //not a ptr addr
   if (!sem) return FALSE; //the ptr points to NULL
 
   //find g_current thread from wakeQ
@@ -144,11 +144,18 @@ BOOL release_semaphore(semaphore **psem)//V OP
   else sem->wake_queue = p->bk;//p->bk become the first
   if (p->bk) p->bk->fd = p->fd; //unlink p
 
+  asm sti;
+  return TRUE;
+}
+BOOL delete_semaphore(semaphore **p)
+{
+  semaphore *sem = *p;
+  if (!p) return FALSE; //not a ptr addr
+  if (!sem) return FALSE; //the ptr points to NULL
   if (sem->value == sem->max_value)
   {
     free(sem);
-    *psem = NULL;//clear semaphore ptr
+    *p = NULL;//clear semaphore ptr
   }
-  asm sti;
   return TRUE;
 }
