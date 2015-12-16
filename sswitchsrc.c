@@ -293,6 +293,12 @@ void main()
 void p1( )
 {
   long i, j, k, t;
+  
+  
+    for (i = 0; i < 10; i++)
+  {
+    printf("r%d,p:%x\n", i, malloc(10));
+  }
 
   for (i = 0; i < 10; i++)//without semaphore
   {
@@ -300,7 +306,7 @@ void p1( )
     for (j = 0; j < 1000; j++)
       for (k = 0; k < 1000; k++);
   }
-
+  
   for (t = 0; t < 10; t++)//with semaphore
   {
     aquire_semaphore(g_semaphore);

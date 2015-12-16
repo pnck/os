@@ -70,12 +70,12 @@ semaphore * create_semaphore(int rescount)
 
 BOOL aquire_semaphore(semaphore * sem)//P op
 {
+  int i;
   struct TCB *p = sem->wake_queue;
   if (!sem) goto FAILED;
 
   asm cli;//clear int flag
   //printf("%s aquire semaphore\n", g_tcb[g_current].name);
-
 
   //check if g_current thread has aquired a semaphore
   if(p==NULL)//no thread in wakeQ, means no thread aquired
