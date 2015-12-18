@@ -22,8 +22,6 @@ typedef int BOOL;
 
 struct TCB
 {
-	struct TCB *fd;//frontend
-	struct TCB *bk;//backend
 	unsigned char *stack;
 	unsigned  int ss;
 	unsigned  int sp;

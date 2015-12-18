@@ -21,7 +21,7 @@ void InitInDos(void);
 int g_current;
 long timecount;
 struct TCB g_tcb[NTCB];
-semaphore *g_semaphore;
+semaphore *g_semaphore1, *g_semaphore2;
 
 
 void InitInDos(void)
@@ -120,7 +120,7 @@ void over()
     enable();
   }
   //force_switch();
-CALL_SWITCH();
+  CALL_SWITCH();
 }
 
 void InitTcb()
@@ -189,7 +189,7 @@ void interrupt new_int8(void)// interrupt switch period
     if (DosBusy())
       return;
     else
-CALL_SWITCH();
+      CALL_SWITCH();
   }
 }
 
@@ -243,8 +243,8 @@ void releaseTcb()
 void main()
 {
   int i;
-  g_semaphore = create_semaphore(1);//create a semaphore obj with 1 res
-
+  g_semaphore1 = create_semaphore(0);//create a semaphore obj with 1 res
+  g_semaphore2 = create_semaphore(0);
   timecount = 0;
 
   InitInDos();
@@ -275,14 +275,15 @@ void main()
   g_tcb[0].state = FINISHED;
   disable();
   setvect(INT_TIME, old_int8);
-  setvect(INT_SWITCH,old_intx80);
+  setvect(INT_SWITCH, old_intx80);
   enable();
   tcb_state();
   for (i = 0; i < 300; i++)
   {
     //printf("r%d,p:%x\n", i, malloc(100));
   }
-  delete_semaphore(&g_semaphore);
+  delete_semaphore(&g_semaphore1);
+  delete_semaphore(&g_semaphore2);
   printf("\n Multi_task system terminated.\n");
 }
 
@@ -293,57 +294,58 @@ void main()
 void p1( )
 {
   long i, j, k, t;
-  
-  
-    for (i = 0; i < 10; i++)
-  {
-    printf("r%d,p:%x\n", i, malloc(10));
-  }
-
+/*
   for (i = 0; i < 10; i++)//without semaphore
   {
     putchar('+');
     for (j = 0; j < 1000; j++)
       for (k = 0; k < 1000; k++);
   }
-  
+*/
   for (t = 0; t < 10; t++)//with semaphore
   {
-    aquire_semaphore(g_semaphore);
-    puts("\np1 sem");
+
+    //puts("\np1 line start");
     for (i = 0; i < 50; i++)
     {
       putchar('*');
+      
       for (j = 0; j < 1000; j++)
         for (k = 0; k < 100; k++);
     }
-    puts("\np1 line.fin...");
-    release_semaphore(g_semaphore);
+    //release_semaphore(g_semaphore2);
+     // aquire_semaphore(g_semaphore1);
+    //puts("\np1 line end...");
+    
   }
-
+  delete_semaphore(&g_semaphore2);
 }
 
 void p2( )
 {
   long i, j, k, t;
+ /* 
   for (i = 0; i < 10; i++)//without semaphore
   {
     putchar('-');
     for (j = 0; j < 1100; j++)
       for (k = 0; k < 900; k++);
   }
+  */
   for (t = 0; t < 10; t++)//with semaphore
   {
-    aquire_semaphore(g_semaphore);
-    puts("\np2 sem");
+    
+    //puts("\np2 line start");
     for (i = 0; i < 50; i++)
     {
+      //aquire_semaphore(g_semaphore2);
       putchar('/');
+     //release_semaphore(g_semaphore1);
       for (j = 0; j < 1000; j++)
         for (k = 0; k < 100; k++);
     }
-    puts("\np2 line.fin...");
-    release_semaphore(g_semaphore);
+    //puts("\np2 line end...");
+    
   }
 
 }
