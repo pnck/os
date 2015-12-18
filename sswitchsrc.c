@@ -294,14 +294,14 @@ void main()
 void p1( )
 {
   long i, j, k, t;
-/*
-  for (i = 0; i < 10; i++)//without semaphore
-  {
-    putchar('+');
-    for (j = 0; j < 1000; j++)
-      for (k = 0; k < 1000; k++);
-  }
-*/
+  /*
+    for (i = 0; i < 10; i++)//without semaphore
+    {
+      putchar('+');
+      for (j = 0; j < 1000; j++)
+        for (k = 0; k < 1000; k++);
+    }
+  */
   for (t = 0; t < 10; t++)//with semaphore
   {
 
@@ -309,14 +309,14 @@ void p1( )
     for (i = 0; i < 50; i++)
     {
       putchar('*');
-      
+
       for (j = 0; j < 1000; j++)
         for (k = 0; k < 100; k++);
     }
-    //release_semaphore(g_semaphore2);
-     // aquire_semaphore(g_semaphore1);
+    release_semaphore(g_semaphore2);
+    aquire_semaphore(g_semaphore1);
     //puts("\np1 line end...");
-    
+
   }
   delete_semaphore(&g_semaphore2);
 }
@@ -324,28 +324,28 @@ void p1( )
 void p2( )
 {
   long i, j, k, t;
- /* 
-  for (i = 0; i < 10; i++)//without semaphore
-  {
-    putchar('-');
-    for (j = 0; j < 1100; j++)
-      for (k = 0; k < 900; k++);
-  }
-  */
+  /*
+   for (i = 0; i < 10; i++)//without semaphore
+   {
+     putchar('-');
+     for (j = 0; j < 1100; j++)
+       for (k = 0; k < 900; k++);
+   }
+   */
   for (t = 0; t < 10; t++)//with semaphore
   {
-    
+
     //puts("\np2 line start");
     for (i = 0; i < 50; i++)
     {
-      //aquire_semaphore(g_semaphore2);
+      aquire_semaphore(g_semaphore2);
       putchar('/');
-     //release_semaphore(g_semaphore1);
+      release_semaphore(g_semaphore1);
       for (j = 0; j < 1000; j++)
         for (k = 0; k < 100; k++);
     }
     //puts("\np2 line end...");
-    
+
   }
 
 }
